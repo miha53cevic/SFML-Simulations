@@ -1,3 +1,6 @@
+// Author: Mihael Petricevic
+// Date: 14.5.2019.
+
 #include "mihaSimpleSFML.h"
 #include <cmath>
 
