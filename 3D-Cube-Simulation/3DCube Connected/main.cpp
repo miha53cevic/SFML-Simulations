@@ -10,8 +10,7 @@
 
 #include "headers/mihaSimpleSFML.hpp"
 
-#include "headers/matrix.hpp"
-#include "headers/vector3.hpp"
+#include "headers/Matrix.h"
 
 #include <math.h>
 
@@ -30,15 +29,6 @@ private:
             rect.setOrigin(rect.getSize().x / 2, rect.getSize().y / 2);
         }
 
-        void setPos(Vector3 x)
-        {
-            rect.setPosition(x.x, x.y);
-
-            // Makni ovo i stavi da je angle += 0.0005f i dobijes istu stvar
-            pos.x = x.x;
-            pos.y = x.y;
-            pos.z = x.z;
-        }
         void setPos(float x = 0, float y = 0, float z = 0)
         {
             pos.x = x;
@@ -50,7 +40,7 @@ private:
 
         sf::RectangleShape rect;
 
-        Vector3 pos;
+        sf::Vector3f pos;
     };
 
     std::vector<Point> vecPoints;
@@ -58,11 +48,11 @@ private:
     sf::Transform trans;
     float angle;
 
-    Matrix::Multiplication3Dto2D<float> Matrix;
-
 protected:
     virtual bool OnUserCreate() override
     {
+        EnableFPSCounter(true);
+
         Point a, b, c, d, e, f, g, h;
         a.setPos(-0.5, -0.5, -0.5);
         b.setPos(+0.5, -0.5, -0.5);
@@ -81,8 +71,7 @@ protected:
 
         for (auto &i : vecPoints)
         {
-            i.pos.mult(100);
-            //i.rect.setFillColor(sf::Color::Green);
+            i.pos *= 100.0f;
         }
 
         return true;
@@ -90,42 +79,44 @@ protected:
 
     virtual bool OnUserUpdate(sf::Time elapsed) override
     {
-        // XY Rotation Matrix
-        std::vector<std::vector<float>> mxy = 
-        {   { cosf(angle), -sinf(angle), 0 },
-            { sinf(angle), +cosf(angle), 0 }    };
-        
         // X Rotation Matrix
-        std::vector<std::vector<float>> mx =
-        {   { 1, 0, 0 },
-            { 0, cosf(angle), -sinf(angle) },
-            { 0, sinf(angle), +cosf(angle) }     };
+        float mx[] = {
+            1,     0,            0,
+            0, cosf(angle), -sinf(angle),
+            0, sinf(angle), +cosf(angle)
+        };
 
         // Y Rotation Matrix
-        std::vector<std::vector<float>> my =
-        {   { +cosf(angle), 0, sinf(angle) },
-            { 0, 1, 0 },
-            { -sinf(angle), 0, cosf(angle) }     };
+        float my[] = {
+            +cosf(angle), 0, sinf(angle),
+            0, 1, 0,
+            -sinf(angle), 0, cosf(angle)
+        };
 
         // Z Rotation Matrix
-        std::vector<std::vector<float>> mz =
-        {   { cosf(angle), -sinf(angle), 0 },
-            { sinf(angle), +cosf(angle), 0 },
-            { 0, 0, 1 }     };
+        float mz[] = {
+            cosf(angle), -sinf(angle), 0,
+            sinf(angle), +cosf(angle), 0,
+            0, 0, 1
+        };
 
         // Draw Points
         for (auto &i : vecPoints)
         {
             Draw(i.rect, trans);
             
-            Vector3 rotated = Matrix.mult(mx, 3, 3, i.pos);
-            i.setPos(Matrix.mult(my, 3, 3, rotated));
-            
-            //std::cout << i.pos.x << " " << i.pos.y << " " << i.pos.z << "\n";
+            Matrix::mat3x3<float> rotatex(mx);
+            Matrix::mat3x3<float> rotatey(my);
+
+            Matrix::mat3x3<float> rotated = rotatex * rotatey;
+
+            Matrix::mat3x1<float> mat(i.pos.x, i.pos.y, i.pos.z);
+            mat *= rotated;
+
+            i.setPos(mat.at(0, 0), mat.at(1, 0), mat.at(2, 0));
         }
 
-        //angle += 0.0005f;
-        angle = 0.0005f;
+        angle = 0.0001f;
 
         auto connect = [&](int i, int j, auto vec)
         {
